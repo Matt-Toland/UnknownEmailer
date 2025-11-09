@@ -1,0 +1,80 @@
+<mjml>
+  <mj-head>
+    <mj-title>UNKNOWN Brain — Weekly Insights</mj-title>
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+      <mj-section padding="20px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      h1 { font-size: 24px; font-weight: 700; margin: 0 0 10px 0; color: #1a1a1a; }
+      h2 { font-size: 18px; font-weight: 600; margin: 20px 0 10px 0; color: #2c2c2c; border-bottom: 2px solid #0066cc; padding-bottom: 5px; }
+      h3 { font-size: 16px; font-weight: 600; margin: 15px 0 8px 0; color: #0066cc; }
+      ul { margin: 8px 0; padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      strong, b { font-weight: 600; color: #1a1a1a; }
+      em, i { font-style: italic; }
+      blockquote {
+        border-left: 3px solid #0066cc;
+        padding-left: 15px;
+        margin: 10px 0;
+        color: #555;
+        font-style: italic;
+        background: #f8f9fa;
+        padding: 10px 15px;
+      }
+      a { color: #0066cc; text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .opportunity-card {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .key-numbers {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin: 10px 0;
+        font-weight: 600;
+      }
+      .tag { display: inline-block; padding: 2px 8px; background: #f0f0f0; border-radius: 3px; font-size: 12px; margin-left: 8px; }
+      .footer { font-size: 12px; color: #999999; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding-top="30px" padding-bottom="10px">
+      <mj-column>
+        <mj-text align="center">
+          <h1>UNKNOWN Brain</h1>
+        </mj-text>
+        <mj-text align="center" font-size="16px" color="#666666">
+          Weekly Insights Report
+        </mj-text>
+        <mj-text align="center" font-size="12px" color="#999999" padding-top="5px">
+          Automated Intelligence | Generated {{ current_date }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding-top="20px" padding-bottom="30px">
+      <mj-column>
+        <mj-text>
+          {{ content }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding-bottom="30px">
+      <mj-column>
+        <mj-text css-class="footer" align="center">
+          🤖 Automated UNKNOWN Brain Report | Analysis Period: {{ date_range }}<br/>
+          Generated from {{ total_meetings }} qualified meetings | Internal use only
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
