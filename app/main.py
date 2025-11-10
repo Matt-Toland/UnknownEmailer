@@ -50,7 +50,7 @@ class SendEmailRequest(BaseModel):
     """Request body for sending email."""
 
     mode: Literal["insights", "coaching"]
-    to: Optional[EmailStr] = None
+    to: Optional[str] = None  # Comma-separated email addresses
 
 
 @app.middleware("http")
