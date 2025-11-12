@@ -22,6 +22,28 @@ def markdown_to_html(md_content: str) -> str:
     # Log the first 500 chars of input to debug
     logger.info(f"Converting markdown, first 500 chars: {md_content[:500]}")
 
+    # Remove any LLM-generated headers and replace with proper markdown headers
+    # Clean up duplicate "Team Performance Table" text
+    md_content = re.sub(r'\*\*##\s*TEAM PERFORMANCE TABLE\*\*', '', md_content)
+    md_content = re.sub(r'##\s*\*\*Team Performance Table\*\*', '', md_content)
+
+    # Convert plain text headers to proper markdown H2
+    # Fix "🎯 ALL CONVERSATIONS (Best to Worst)" if LLM outputs it as plain text
+    md_content = re.sub(r'^🎯\s*ALL CONVERSATIONS.*?\n', r'## 🎯 ALL CONVERSATIONS (Best to Worst)\n\n', md_content, flags=re.MULTILINE)
+
+    # Add section headers if LLM didn't include them
+    # Look for table or "ALL CONVERSATIONS" section
+    if "📊 TEAM PERFORMANCE TABLE" not in md_content and "|" in md_content:
+        # LLM output starts with table - add header
+        md_content = "## 📊 TEAM PERFORMANCE TABLE\n\n" + md_content
+
+    if "🎯 ALL CONVERSATIONS" not in md_content and "###" in md_content:
+        # Add conversations header before first H3
+        md_content = re.sub(r'(###)', r'## 🎯 ALL CONVERSATIONS (Best to Worst)\n\n\1', md_content, count=1)
+
+    # Clean up H3 headers wrapped in bold - remove ** around the entire H3 line
+    md_content = re.sub(r'###\s*\*\*(.*?)\*\*', r'### \1', md_content)
+
     # Convert markdown to HTML first with more extensions
     html = markdown.markdown(
         md_content,
@@ -341,6 +363,6 @@ def get_email_subject(mode: str) -> str:
     week_ending = get_week_ending_date()
 
     if mode == "insights":
-        return f"UNKNOWN Brain — Weekly Insights (w/e {week_ending})"
+        return f"UNKNOWN Brain — Weekly Team Performance (w/e {week_ending})"
     else:
         return f"UNKNOWN Brain — Calls & Coaching (w/e {week_ending})"

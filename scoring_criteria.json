@@ -1,0 +1,167 @@
+{
+  "scoring_system": {
+    "total_possible": 5,
+    "qualified_threshold": 3,
+    "response_format": {
+      "qualified": "boolean",
+      "reason": "string - short explanation",
+      "summary": "string - 1-3 sentences about client",
+      "evidence": "string - verbatim quote from client speakers only"
+    }
+  },
+  "criteria": {
+    "NOW": {
+      "name": "Current State & Immediate Hiring",
+      "description": "Immediate talent needs aligned with UNKNOWN Access products",
+      "qualified_when": [
+        "Current company scale mentioned (revenue, headcount, team structure)",
+        "Immediate hiring needs - especially roles that 'change where they're going'",
+        "Need for flexible talent model without quality compromise (The Bench)",
+        "TA team struggling to access right talent (The Partnership)",
+        "Critical roles blocking growth or transformation"
+      ],
+      "example_signals": [
+        "We need someone who can change our trajectory, not just fill a role",
+        "Our TA team can't find the caliber of people we need",
+        "Need exceptional freelance talent on tap",
+        "Looking for people we didn't even know existed",
+        "Critical senior hire blocking our next phase"
+      ],
+      "unknown_products": [
+        "The Search",
+        "The Bench",
+        "The Partnership"
+      ]
+    },
+    "NEXT": {
+      "name": "Future Vision & Transformation",
+      "description": "Future transformation needs aligned with UNKNOWN Transform & Ventures",
+      "qualified_when": [
+        "Vision of becoming something new (Transform: 'what you're becoming')",
+        "Need to work ON the business model, not just IN the business",
+        "Plans for M&A, partnerships, or exits (Ventures)",
+        "Desire to build talent strategy for creative capital growth",
+        "Expansion plans requiring new operating models"
+      ],
+      "example_signals": [
+        "We know what we want to become but not how to get there",
+        "Need to redesign our org for where we're going",
+        "Looking at acquisitions but unsure about valuation",
+        "Want to build conditions for creativity to thrive",
+        "Exploring partnerships to accelerate growth",
+        "Need outside perspective on our talent strategy",
+        "75% of acquisitions fail - we can't afford that"
+      ],
+      "unknown_products": [
+        "Transform Workshop",
+        "Shape of You",
+        "Partnership+",
+        "Fake or Fortune (Buy)",
+        "The Closer (Buy)",
+        "The Intro (Sell)"
+      ]
+    },
+    "MEASURE": {
+      "name": "Success Metrics & KPIs",
+      "description": "Client has clear, measurable success criteria",
+      "qualified_when": [
+        "Financial metrics: revenue/ARR, margin %, topline targets",
+        "Adoption/NPS: usage rates, adoption metrics, NPS/eNPS scores",
+        "Operational: time-to-hire, cycle time, churn, retention rates",
+        "Timeframes: target dates or SMART goals mentioned"
+      ],
+      "example_signals": [
+        "Any mention of specific KPIs or measurable outcomes",
+        "Target numbers or percentages",
+        "Timeline-bound goals"
+      ],
+      "note": "No specific quote examples - looks for ANY measurable outcomes"
+    },
+    "BLOCKER": {
+      "name": "Growth Obstacles",
+      "description": "Client mentions blockers that UNKNOWN can solve",
+      "qualified_when": {
+        "access_blockers": [
+          "Can't access talent we didn't know existed",
+          "TA team lacks specialist support to find right people",
+          "Need game-changing hires, not just role-fillers",
+          "Talent compromises due to flexibility needs"
+        ],
+        "transform_blockers": [
+          "Working IN the business, can't work ON the business",
+          "Don't know how to build for what we're becoming",
+          "Lack talent strategy for creative capital growth",
+          "No clear blueprint from current state to future state"
+        ],
+        "ventures_blockers": [
+          "Don't know how to value creative capital",
+          "Fear of being in the 75% of failed acquisitions",
+          "Need connections but don't want cattle-mart feeling",
+          "Unsure of our worth to potential partners"
+        ]
+      },
+      "unknown_products": [
+        "Access products (Search, Bench, Partnership)",
+        "Transform products (Workshop, Shape of You, Partnership+)",
+        "Ventures products (Fake or Fortune, The Closer, The Intro)"
+      ]
+    },
+    "FIT": {
+      "name": "UNKNOWN Service Alignment",
+      "description": "Client needs match UNKNOWN product categories",
+      "response_format": {
+        "qualified": "boolean",
+        "reason": "string - explain which UNKNOWN products match",
+        "summary": "string - 1-3 sentences mapping needs to products",
+        "services": "array - ['Access', 'Transform', 'Ventures'] - 1 to 3 values",
+        "evidence": "string - verbatim quote <= 25 words from client only"
+      },
+      "categories": {
+        "Access": {
+          "tagline": "When you need the right people to deliver",
+          "products": {
+            "The Search": "Need someone to change trajectory, not just fill a role",
+            "The Bench": "Need exceptional freelance talent without compromising quality",
+            "The Partnership": "TA team needs specialist support to access right talent"
+          },
+          "signals": [
+            "People we didn't know existed",
+            "Change where we're going",
+            "On tap talent"
+          ]
+        },
+        "Transform": {
+          "tagline": "When you need the right strategy to become more",
+          "products": {
+            "Transform Workshop": "Know what to become but not how to get there",
+            "Shape of You": "Need to change but can't put finger on what",
+            "Partnership+": "Have transformation goals but lack skills to deliver"
+          },
+          "signals": [
+            "Work ON not IN business",
+            "Talent success model",
+            "Creative capital"
+          ]
+        },
+        "Ventures": {
+          "tagline": "When you need the right partnerships for step-change",
+          "products": {
+            "Fake or Fortune (Buy)": "M&A deal completion and valuation",
+            "The Closer (Buy)": "Finding acquisition targets that fit",
+            "The Intro (Sell)": "Finding partners who truly get your value"
+          },
+          "signals": [
+            "Value creative capital",
+            "75% acquisitions fail",
+            "Exit planning"
+          ]
+        }
+      }
+    }
+  },
+  "important_rules": {
+    "speaker_analysis": "ONLY analyze 'Them:' speakers (the client). IGNORE all 'Me:' speakers (UNKNOWN representative)",
+    "evidence_requirements": "Evidence must be verbatim quotes from client speakers only, NEVER from UNKNOWN rep",
+    "fit_evidence_limit": "FIT evidence must be <= 25 words"
+  }
+}

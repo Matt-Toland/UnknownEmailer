@@ -19,58 +19,67 @@ CRITICAL RULES:
 4. Include Granola meeting links when available
 5. Extract specific company names, role titles, and decision makers"""
 
-INSIGHTS_USER_PROMPT = """Analyze UNKNOWN's weekly business intelligence. Create an executive briefing extracting maximum value from the evidence.
+INSIGHTS_USER_PROMPT = """Create a weekly team performance coaching report from UNKNOWN Brain meeting data.
 
+SCORING CRITERIA REFERENCE:
+- **NOW** (Current State & Immediate Hiring): Current scale, immediate hiring needs, talent access challenges
+- **NEXT** (Future Vision & Transformation): Vision of becoming something new, working ON the business, M&A/partnerships
+- **MEASURE** (Success Metrics): Financial metrics, adoption/NPS, operational KPIs, timeframes
+- **BLOCKER** (Growth Obstacles): Access blockers, transform blockers, ventures blockers
+- **FIT** (UNKNOWN Service Alignment): Needs match Access/Transform/Ventures products
 
-## 🎯 Priority Opportunities
+📊 TEAM PERFORMANCE TABLE
 
-For the top 3 meetings from now_pipeline, create detailed cards:
+From team_performance data, create a table showing each person's conversations and scores:
 
-### [Client Name]
+| Name | Conversations | Avg Score |
+|------|--------------|-----------|
+| [person_name] | [conversation count] | [average score]/5 |
+
+Include team totals at bottom: Total Conversations: [X] | Team Average: [Y]/5
+
+🎯 ALL CONVERSATIONS (Best to Worst)
+
+For EACH meeting in now_pipeline, create a coaching card:
+
+### [client]
+
 **Meeting**: "[meeting_title]" - [meeting_date]
 **Owner**: [owner] | **Score**: [score]/5
-**Key Numbers**: [Extract ALL budget/revenue/headcount numbers from evidence]
 
-**Critical Evidence** (quote verbatim the most impactful parts):
-> "[EXACT quote from now_evidence showing urgency/timeline]"
-> "[EXACT quote from measure_evidence showing metrics/budget]"
-> "[EXACT quote from blocker_evidence showing challenges]"
+✅ **What Was Done Well**:
+- **NOW**: [Quote from now_evidence if now_qualified='true']
+- **NEXT**: [Quote from next_evidence if next_qualified='true']
+- **MEASURE**: [Quote from measure_evidence if measure_qualified='true']
+- **BLOCKER**: [Quote from blocker_evidence if blocker_qualified='true']
+- **FIT**: [Quote from fit_evidence if fit_qualified='true']
 
-**Specific Challenges**: [List actual challenges from array if present]
-**Next Action**: [Specific follow-up with date/person/topic based on evidence]
+💡 **How to Improve** (ONLY if score <5):
+- **NOW**: [Coaching question if now_qualified='false']
+- **NEXT**: [Coaching question if next_qualified='false']
+- **MEASURE**: [Coaching question if measure_qualified='false']
+- **BLOCKER**: [Coaching question if blocker_qualified='false']
+- **FIT**: [Coaching question if fit_qualified='false']
+
+**Specific Challenges**: [List from challenges field if present, otherwise omit this line]
+
+**Next Action**: [Extract actionable next step with timeline/owner from evidence or context]
+
 [View full notes →](meeting_link)
 
-[Repeat for top 3 opportunities]
+---
 
-## 💰 Deal Pipeline
-
-Extract ALL meetings mentioning specific budgets, revenue, or commercial numbers:
-- List each with **client**, **amount**, and **context**
-- Highlight urgency indicators (timelines, deadlines, competitive situations)
-
-## 🎯 Active Talent Searches
-
-Extract ALL hiring needs with:
-- **Role**: [Exact title mentioned]
-- **Budget**: [Salary/day rate if mentioned]
-- **Timeline**: [Start date or urgency]
-- **Client**: [Company name]
-
-## 📊 Market Intelligence
-
-From the evidence, extract:
-- Industry trends (e.g., "Buy American policy", "AI replacing juniors")
-- Competitive moves (companies mentioned, market shifts)
-- Pricing benchmarks (day rates, project fees, salaries)
-
-## 🔥 Hot Actions
-
-Based on evidence urgency:
-1. **IMMEDIATE**: [Client] needs [specific thing] by [date]
-2. **THIS WEEK**: Follow up on [specific opportunity with context]
-3. **PIPELINE**: Nurture [client] for [future opportunity]
-
-REMEMBER: Quote evidence EXACTLY. Highlight ALL numbers. Include Granola links. Max 600 words.
+CRITICAL RULES:
+1. DO NOT include any preamble, headers, or introductory text
+2. Start directly with the table, then the conversation cards
+3. Show ALL meetings with concise coaching
+4. Use EXACTLY these criterion labels: NOW, NEXT, MEASURE, BLOCKER, FIT - do NOT make up other labels
+5. Check the qualification flags (now_qualified, next_qualified, etc.) - if "true" include in "What Was Done Well", if "false" include in "How to Improve"
+6. If score is 5/5, skip the "How to Improve" section entirely
+7. Keep quotes under 15 words
+8. **Specific Challenges**: List challenges from the challenges array if present, otherwise omit this line entirely
+9. **Next Action**: Extract a concrete next step with timeline/owner from the meeting context (e.g., "Sean to propose TA+bench model by week of 10 Nov")
+10. Include Granola link for every meeting
 
 Data:
 {data}"""
@@ -143,9 +152,9 @@ class LLMClient:
             response = self.client.responses.create(
                 model=self.model,
                 input=full_prompt,
-                reasoning={"effort": "minimal"},  # Back to minimal like original
-                text={"verbosity": "low"},        # Back to low like original
-                max_output_tokens=1500,
+                reasoning={"effort": "low"},
+                text={"verbosity": "low"},
+                max_output_tokens=8000,  # Balanced for 15 meetings with concise coaching
             )
 
             content = response.output_text or ""

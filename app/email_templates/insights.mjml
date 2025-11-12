@@ -1,6 +1,6 @@
 <mjml>
   <mj-head>
-    <mj-title>UNKNOWN Brain — Weekly Insights</mj-title>
+    <mj-title>UNKNOWN Brain — Weekly Team Performance</mj-title>
     <mj-attributes>
       <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" />
       <mj-text font-size="14px" color="#333333" line-height="1.6" />
@@ -25,6 +25,28 @@
       }
       a { color: #0066cc; text-decoration: none; font-weight: 500; }
       a:hover { text-decoration: underline; }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 15px 0;
+        font-size: 14px;
+      }
+      th {
+        background: #0066cc;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 10px;
+        text-align: left;
+        border: 1px solid #0055aa;
+      }
+      td {
+        padding: 8px 10px;
+        border: 1px solid #e0e0e0;
+        background: #ffffff;
+      }
+      tr:nth-child(even) td {
+        background: #f8f9fa;
+      }
       .opportunity-card {
         background: #ffffff;
         border: 1px solid #e0e0e0;
@@ -52,7 +74,7 @@
           <h1>UNKNOWN Brain</h1>
         </mj-text>
         <mj-text align="center" font-size="16px" color="#666666">
-          Weekly Insights Report
+          Weekly Team Performance Report
         </mj-text>
         <mj-text align="center" font-size="12px" color="#999999" padding-top="5px">
           Automated Intelligence | Generated {{ current_date }}

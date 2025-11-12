@@ -114,6 +114,7 @@ async def health():
 @app.get("/email/preview", response_class=HTMLResponse)
 async def preview_email(
     mode: Literal["insights", "coaching"] = Query(..., description="Email mode"),
+    days: Optional[int] = Query(None, description="Number of days to look back"),
     request: Request = None,
 ):
     """
@@ -129,20 +130,24 @@ async def preview_email(
         bq_client = get_bq_client()
         llm_client = get_llm_client()
 
+        # Set the time period (default to 7 days for weekly reports)
+        if days is None:
+            days = 7  # Weekly reports
+
         # Fetch data from BigQuery
         if mode == "insights":
-            logger.info(f"[{request_id}] Fetching insights data from BigQuery")
-            meetings = bq_client.fetch_insights_data()
+            logger.info(f"[{request_id}] Fetching v2 insights data from BigQuery for last {days} days")
+            intelligence_data = bq_client.fetch_insights_data_v2(days=days)
 
-            if not meetings:
+            if not intelligence_data.get("summary_metrics"):
                 return HTMLResponse(
-                    content="<html><body><h1>No qualified meetings found in the last 7 days</h1></body></html>",
+                    content="<html><body><h1>No qualified meetings found in the specified period</h1></body></html>",
                     status_code=200,
                 )
 
             # Generate content with LLM
             logger.info(f"[{request_id}] Generating insights content with LLM")
-            markdown_content = llm_client.generate_insights(meetings)
+            markdown_content = llm_client.generate_insights_v2(intelligence_data)
 
         else:  # coaching
             logger.info(f"[{request_id}] Fetching coaching data from BigQuery")
@@ -198,10 +203,9 @@ async def preview_email_v2(
         bq_client = get_bq_client()
         llm_client = get_llm_client()
 
-        # Set the time period (default to 30 days for demo, then change to 7 for production)
+        # Set the time period (default to 7 days for weekly reports)
         if days is None:
-            days = 30  # Demo default to capture October meetings
-            # After demo, change this back to 7 for weekly reports
+            days = 7  # Weekly reports
 
         # Fetch data from BigQuery
         if mode == "insights":
@@ -281,8 +285,8 @@ async def send_email(
         llm_client = get_llm_client()
         email_sender = get_email_sender()
 
-        # Set time period - 30 days for demo
-        days = 30
+        # Set time period - 7 days for weekly reports
+        days = 7
 
         # Fetch data from BigQuery using v2 functions
         if body.mode == "insights":

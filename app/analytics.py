@@ -42,6 +42,12 @@ class AnalyticsClient:
             JSON_VALUE(measure, '$.evidence') as measure_evidence,
             JSON_VALUE(blocker, '$.evidence') as blocker_evidence,
             JSON_VALUE(fit, '$.evidence') as fit_evidence,
+            -- Qualification flags for coaching feedback
+            JSON_VALUE(now, '$.qualified') as now_qualified,
+            JSON_VALUE(next, '$.qualified') as next_qualified,
+            JSON_VALUE(measure, '$.qualified') as measure_qualified,
+            JSON_VALUE(blocker, '$.qualified') as blocker_qualified,
+            JSON_VALUE(fit, '$.qualified') as fit_qualified,
             IFNULL(title, calendar_event_title) as meeting_title,
             challenges,
             results,
@@ -49,22 +55,12 @@ class AnalyticsClient:
             -- Desk/department for context
             desk,
             -- Meeting link if available
-            IFNULL(granola_link, '') as meeting_link,
-            -- Evidence quality score (prioritize meetings with numbers and specifics)
-            (
-                CASE WHEN REGEXP_CONTAINS(JSON_VALUE(now, '$.evidence'), r'[£$][0-9]') THEN 2 ELSE 0 END +
-                CASE WHEN REGEXP_CONTAINS(JSON_VALUE(measure, '$.evidence'), r'[£$][0-9]') THEN 2 ELSE 0 END +
-                CASE WHEN REGEXP_CONTAINS(JSON_VALUE(blocker, '$.evidence'), r'[£$][0-9]') THEN 2 ELSE 0 END +
-                CASE WHEN LENGTH(JSON_VALUE(now, '$.evidence')) > 200 THEN 1 ELSE 0 END +
-                CASE WHEN LENGTH(JSON_VALUE(measure, '$.evidence')) > 200 THEN 1 ELSE 0 END +
-                CASE WHEN LENGTH(JSON_VALUE(blocker, '$.evidence')) > 200 THEN 1 ELSE 0 END
-            ) as evidence_quality_score
+            IFNULL(granola_link, '') as meeting_link
         FROM `{self.table_id}`
         WHERE scored_at BETWEEN @start_date AND @end_date
             AND qualified = TRUE
-            AND total_qualified_sections >= 4  -- Focus on highest scoring (4-5)
-        ORDER BY evidence_quality_score DESC, total_qualified_sections DESC, scored_at DESC
-        LIMIT 10
+        ORDER BY total_qualified_sections DESC, scored_at DESC
+        LIMIT 15
         """
 
         job_config = bigquery.QueryJobConfig(
@@ -473,6 +469,78 @@ class AnalyticsClient:
                 "last_week": {},
                 "deltas": {},
             }
+
+    def get_team_performance_table(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Get team performance table with all meetings grouped by person.
+
+        Returns meetings for each person with their scores and averages.
+        """
+        end_date = datetime.now(self.tz)
+        start_date = end_date - timedelta(days=days)
+
+        query = f"""
+        SELECT
+            creator_name as person_name,
+            IFNULL(title, calendar_event_title) as conversation_title,
+            total_qualified_sections as score,
+            FORMAT_DATE('%d %b', date) as date_short
+        FROM `{self.table_id}`
+        WHERE scored_at BETWEEN @start_date AND @end_date
+            AND qualified = TRUE
+        ORDER BY creator_name, total_qualified_sections DESC, date DESC
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date),
+                bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date),
+            ]
+        )
+
+        try:
+            logger.info(f"Fetching team performance table for last {days} days")
+            results = self.client.query(query, job_config=job_config).result()
+
+            # Group by person and calculate averages
+            people_data = {}
+            for row in results:
+                person = row.person_name
+                if person not in people_data:
+                    people_data[person] = {
+                        "person_name": person,
+                        "conversations": [],
+                        "total_score": 0,
+                        "count": 0
+                    }
+
+                people_data[person]["conversations"].append({
+                    "title": row.conversation_title,
+                    "score": row.score,
+                    "date": row.date_short
+                })
+                people_data[person]["total_score"] += row.score
+                people_data[person]["count"] += 1
+
+            # Calculate averages
+            for person in people_data.values():
+                person["average_score"] = round(person["total_score"] / person["count"], 1) if person["count"] > 0 else 0
+
+            # Convert to list and sort by person name
+            team_list = list(people_data.values())
+            team_list.sort(key=lambda x: x["person_name"])
+
+            logger.info(f"Found {len(team_list)} people with {sum(p['count'] for p in team_list)} total conversations")
+
+            return {
+                "people": team_list,
+                "total_conversations": sum(p["count"] for p in team_list),
+                "team_average": round(sum(p["total_score"] for p in team_list) / sum(p["count"] for p in team_list), 1) if team_list else 0
+            }
+
+        except Exception as e:
+            logger.error(f"Team performance table query failed: {e}", exc_info=True)
+            return {"people": [], "total_conversations": 0, "team_average": 0}
 
 
 # Lazy-loaded global instance

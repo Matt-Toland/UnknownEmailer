@@ -38,8 +38,8 @@ class BigQueryClient:
 
         # Gather all intelligence data
         return {
+            "team_performance": analytics.get_team_performance_table(days),
             "now_pipeline": analytics.get_now_pipeline(days),
-            "deal_pipeline": analytics.get_deal_pipeline(days),
             "client_concentration": analytics.get_client_concentration(days),
             "service_fit": analytics.get_service_fit_analysis(days),
             "blocker_patterns": analytics.get_blocker_patterns(days),
