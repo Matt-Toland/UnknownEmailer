@@ -202,36 +202,33 @@ class LLMClient:
             return self._fallback_performance_table(data)
     
     def _generate_all_conversations_concurrent(self, meetings: List[Dict[str, Any]]) -> str:
-        """Generate all conversation cards using concurrent API calls (3 at a time)."""
+        """Generate all conversation cards sequentially (more reliable than concurrent)."""
         if not meetings:
             return "No qualified meetings found."
-        
+
         # Sort meetings by score (best first)
         meetings_sorted = sorted(meetings, key=lambda x: x.get('score', 0), reverse=True)
-        
-        # Process in batches of 3 for concurrent calls
+
+        # Process in batches of 3 meetings at a time
         batch_size = 3
         batches = [meetings_sorted[i:i+batch_size] for i in range(0, len(meetings_sorted), batch_size)]
-        
+
         all_cards = []
-        futures = []
-        
-        # Submit all batches for concurrent processing
+
+        # Process each batch sequentially
         for batch in batches:
-            future = self.executor.submit(self._generate_conversation_batch, batch)
-            futures.append(future)
-        
-        # Collect results in order
-        for future in futures:
             try:
-                cards = future.result(timeout=30)  # 30 second timeout per batch
+                logger.info(f"Generating batch of {len(batch)} conversation cards...")
+                cards = self._generate_conversation_batch(batch)
                 all_cards.append(cards)
             except Exception as e:
                 logger.error(f"Batch generation failed: {e}")
-                # Generate fallback for this batch
+                # Generate fallback for THIS specific batch
+                fallback_cards = []
                 for meeting in batch:
-                    all_cards.append(self._fallback_conversation_card(meeting))
-        
+                    fallback_cards.append(self._fallback_conversation_card(meeting))
+                all_cards.append("\n".join(fallback_cards))
+
         return "\n".join(all_cards)
     
     def _generate_conversation_batch(self, meetings_batch: List[Dict[str, Any]]) -> str:
