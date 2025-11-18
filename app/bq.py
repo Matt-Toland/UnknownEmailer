@@ -58,7 +58,7 @@ class BigQueryClient:
             ROUND(AVG(total_qualified_sections), 1) as avg_score,
             ROUND(100.0 * COUNTIF(qualified = TRUE) / COUNT(*), 1) as pct_qualified
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
         """
 
         job_config = bigquery.QueryJobConfig(
@@ -251,7 +251,7 @@ class BigQueryClient:
             AVG(total_qualified_sections) as avg_score,
             ROUND(100.0 * COUNTIF(qualified = TRUE) / COUNT(*), 1) as pct_qualified
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
         """
 
         # Leaderboard by desk
@@ -263,7 +263,7 @@ class BigQueryClient:
             ROUND(AVG(total_qualified_sections), 1) as avg_score,
             ROUND(100.0 * COUNTIF(qualified = TRUE) / COUNT(*), 1) as pct_qualified
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
         GROUP BY desk
         ORDER BY avg_score DESC
         LIMIT 5
@@ -277,7 +277,7 @@ class BigQueryClient:
             ROUND(100.0 * COUNTIF(JSON_VALUE(measure, '$.qualified') = 'true') / COUNT(*), 1) as pct_measure,
             ROUND(100.0 * COUNTIF(JSON_VALUE(blocker, '$.qualified') = 'true') / COUNT(*), 1) as pct_blocker
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date AND qualified = TRUE
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date AND qualified = TRUE
         """
 
         # Sample meetings for context
@@ -294,7 +294,7 @@ class BigQueryClient:
             blocker,
             fit
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date AND qualified = TRUE
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date AND qualified = TRUE
         ORDER BY total_qualified_sections DESC
         LIMIT 10
         """

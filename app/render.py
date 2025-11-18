@@ -147,7 +147,7 @@ def _render_simple_html(content_html: str, mode: str, total_meetings: int = None
 
     title_map = {
         "insights": "Weekly Insights Report",
-        "coaching": "Calls & Coaching Report",
+        "coaching": "Weekly Team Performance Report",
     }
     subtitle = title_map.get(mode, "Weekly Update")
 
@@ -365,4 +365,4 @@ def get_email_subject(mode: str) -> str:
     if mode == "insights":
         return f"UNKNOWN Brain — Weekly Team Performance (w/e {week_ending})"
     else:
-        return f"UNKNOWN Brain — Calls & Coaching (w/e {week_ending})"
+        return f"UNKNOWN Brain — Weekly Team Performance (w/e {week_ending})"

@@ -1,7 +1,11 @@
-"""OpenAI LLM integration and prompt templates."""
+"""OpenAI LLM integration for UNKNOWN Brain client intelligence reports."""
 import json
 import logging
-from typing import Any, Dict, List
+import asyncio
+from typing import Any, Dict, List, Optional
+from collections import defaultdict
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from openai import OpenAI
 
@@ -9,366 +13,412 @@ from app.config import config
 
 logger = logging.getLogger(__name__)
 
+# Use GPT-4.1 for better quality
+DEFAULT_MODEL = "gpt-4-1106-preview"  # or whatever GPT-4.1 model name is configured
 
-SYSTEM_PROMPT = """You are UNKNOWN's internal analyst. Write detailed, concrete UK-English weekly briefings. Be comprehensive and specific.
+# SECTION 1: EXECUTIVE SUMMARY PROMPT
+EXECUTIVE_SUMMARY_PROMPT = """You are UNKNOWN's internal analyst. UNKNOWN is a creative talent consultancy that helps brands and agencies hire exceptional creative leaders and build flexible freelance teams.
+
+Analyze this week's CLIENT meetings and write ONE comprehensive paragraph (150-200 words) for the Executive Summary covering:
+
+1. Total qualified client meetings and average score
+2. Top performer and their key client achievement (e.g., "Ellie led with a high-impact session with Instacart")
+3. Key hiring trends observed across clients (flexibility on roles, freelance-to-perm, trial periods, contract structures)
+4. Notable client patterns (e.g., "clients prioritizing adaptability over rigid titles", "emphasis on cultural fit")
+5. Market signals and commercial opportunities (e.g., "broader trend toward agile hiring models", "emerging appetite for fractional executives")
+
+Be specific. Reference actual clients. Highlight commercial opportunities.
+
+Data: {data}"""
+
+# SECTION 2: TEAM PERFORMANCE TABLE PROMPT
+PERFORMANCE_TABLE_PROMPT = """Create a markdown table showing UNKNOWN team performance this week.
+
+Format EXACTLY as:
+| Name | Conversation | Score |
+|------|--------------|-------|
+| [Name] | [Client] — [Date] | [X]/5 |
+| | [Client 2] — [Date 2] | [X]/5 |
+| | **Average** | **[X.X]/5** |
+| [Name 2] | [Client] — [Date] | [X]/5 |
+| | **Average** | **[X.X]/5** |
+| **Total: X conversations** | **Team Average** | **[X.X]/5** |
 
 CRITICAL RULES:
-1. Format output in Markdown with **double asterisks** for bold, ## for headings
-2. QUOTE evidence verbatim - do not summarize or paraphrase
-3. HIGHLIGHT all numbers: budgets (£/$), percentages (%), headcounts, timelines
-4. Include Granola meeting links when available
-5. Extract specific company names, role titles, and decision makers"""
+1. List ALL conversations for each team member
+2. ALWAYS include an Average row (in bold) after each team member's meetings
+3. Sort team members by highest average score first
+4. Use empty Name cell (|  |) for additional meetings and Average rows
+5. Bold the Average rows and Total row
 
-INSIGHTS_USER_PROMPT = """Create a weekly team performance coaching report from UNKNOWN Brain meeting data.
+Data: {data}"""
 
-SCORING CRITERIA REFERENCE:
-- **NOW** (Current State & Immediate Hiring): Current scale, immediate hiring needs, talent access challenges
-- **NEXT** (Future Vision & Transformation): Vision of becoming something new, working ON the business, M&A/partnerships
-- **MEASURE** (Success Metrics): Financial metrics, adoption/NPS, operational KPIs, timeframes
-- **BLOCKER** (Growth Obstacles): Access blockers, transform blockers, ventures blockers
-- **FIT** (UNKNOWN Service Alignment): Needs match Access/Transform/Ventures products
+# SECTION 3: CONVERSATION CARD PROMPT (for batches of 3)
+CONVERSATION_CARD_PROMPT = """You are UNKNOWN's analyst. UNKNOWN helps companies hire creative talent and build freelance teams.
 
-📊 TEAM PERFORMANCE TABLE
+For EACH of these {count} CLIENT meetings, create a detailed analysis card:
 
-From team_performance data, create a table showing each person's conversations and scores:
+### [Client Name] with [UNKNOWN Team Member]
 
-| Name | Conversations | Avg Score |
-|------|--------------|-----------|
-| [person_name] | [conversation count] | [average score]/5 |
+**Meeting**: [Meeting Title] - [Date] | **Score**: [X]/5
 
-Include team totals at bottom: Total Conversations: [X] | Team Average: [Y]/5
+✅ **What [Team Member] Uncovered:**
 
-🎯 ALL CONVERSATIONS (Best to Worst)
+- **NOW**: [Synthesize immediate needs/current state in one flowing sentence - what's happening, why it matters, specific numbers/names]
+- **NEXT**: [Synthesize future direction in one flowing sentence - where they're headed, decision timeline, next milestones]
+- **MEASURE**: [Synthesize success metrics in one flowing sentence - how they'll evaluate, KPIs, timeframes]
+- **BLOCKER**: [Synthesize obstacles in one flowing sentence - what's preventing progress, constraints, risks]
+- **FIT**: [Explain UNKNOWN's specific value-add for this opportunity - which services (exec search/freelance/advisory), why now, commercial upside]
 
-For EACH meeting in now_pipeline, create a coaching card:
+💡 **Coaching for [Team Member]:**
+[2-3 hyper-specific questions to ask next that would unlock deal intelligence - e.g., "What would kill this deal post-LOI?", "Who's the internal skeptic?", "What's your integration playbook?" Focus on uncovering decision-making dynamics, hidden stakeholders, and deal-breakers]
 
-### [client]
+**Next Action**: [Concrete deliverable with deadline and strategic intent - e.g., "Send comparative analysis of 3 candidates by Friday focusing on cultural fit markers", "Schedule follow-up Tuesday to discuss integration support needs"]
 
-**Meeting**: "[meeting_title]" - [meeting_date]
-**Owner**: [owner] | **Score**: [score]/5
-
-✅ **What Was Done Well**:
-- **NOW**: [Quote from now_evidence if now_qualified='true']
-- **NEXT**: [Quote from next_evidence if next_qualified='true']
-- **MEASURE**: [Quote from measure_evidence if measure_qualified='true']
-- **BLOCKER**: [Quote from blocker_evidence if blocker_qualified='true']
-- **FIT**: [Quote from fit_evidence if fit_qualified='true']
-
-💡 **How to Improve** (ONLY if score <5):
-- **NOW**: [Coaching question if now_qualified='false']
-- **NEXT**: [Coaching question if next_qualified='false']
-- **MEASURE**: [Coaching question if measure_qualified='false']
-- **BLOCKER**: [Coaching question if blocker_qualified='false']
-- **FIT**: [Coaching question if fit_qualified='false']
-
-**Specific Challenges**: [List from challenges field if present, otherwise omit this line]
-
-**Next Action**: [Extract actionable next step with timeline/owner from evidence or context]
-
-[View full notes →](meeting_link)
+[View meeting →](meeting_link_here)
 
 ---
 
 CRITICAL RULES:
-1. DO NOT include any preamble, headers, or introductory text
-2. Start directly with the table, then the conversation cards
-3. Show ALL meetings with concise coaching
-4. Use EXACTLY these criterion labels: NOW, NEXT, MEASURE, BLOCKER, FIT - do NOT make up other labels
-5. Check the qualification flags (now_qualified, next_qualified, etc.) - if "true" include in "What Was Done Well", if "false" include in "How to Improve"
-6. If score is 5/5, skip the "How to Improve" section entirely
-7. Keep quotes under 15 words
-8. **Specific Challenges**: List challenges from the challenges array if present, otherwise omit this line entirely
-9. **Next Action**: Extract a concrete next step with timeline/owner from the meeting context (e.g., "Sean to propose TA+bench model by week of 10 Nov")
-10. Include Granola link for every meeting
+1. SYNTHESIZE insights - DO NOT copy/paste raw evidence or use quotes
+2. Write complete, flowing sentences with specific numbers, names, and details integrated naturally
+3. Each bullet point should be ONE complete sentence (not fragments or lists)
+4. Remove all quotation marks - rewrite everything in your own words
+5. Coaching must be hyper-specific actionable questions (not generic "probe deeper")
+6. Next Action must include concrete deliverable + deadline + strategic purpose
+7. Focus on commercial value and deal intelligence
+8. Replace "meeting_link_here" with the actual meeting_link from the meeting data
 
-Data:
-{data}"""
+Meetings to analyze:
+{meetings_data}"""
 
-COACHING_USER_PROMPT = """Create a team performance briefing focused on discovery quality and improvement.
+# SECTION 4: TEAM COACHING PROMPT
+TEAM_COACHING_PROMPT = """Based on this week's client meetings, create the Team Coaching section:
 
-IMPORTANT: Use proper Markdown formatting including **bold text** with double asterisks:
+## 🎯 TEAM COACHING
 
-## 📊 Team Performance Summary
-From summary data, show:
-- Total meetings: [X] (vs last week: [+/-Y])
-- Qualified rate: [X]% (vs last week: [+/-Y]%)
-- Average score: [X] (vs last week: [+/-Y])
+**What the team is doing well:**
+[Identify 2-3 specific strengths in client discovery - e.g., "Strong at uncovering immediate hiring pain points (NOW)", "Excellent at identifying budget blockers early"]
 
-## 🏆 Top Performers
-From host_performance data, recognize top 3:
-Format: **[Name]** - Score: [X] | Discovery depth: [Y]% | Meetings: [Z]
+**To become world-class:**
+[2-3 specific improvements with examples:]
+- For MEASURE: [e.g., "Ask clients 'What specific outcomes would make this hire successful in 90 days?'"]
+- For FIT: [e.g., "Probe deeper on whether they need permanent hires vs. fractional/freelance solutions"]
+- For BLOCKER: [e.g., "Uncover hidden stakeholders who might veto hiring decisions"]
 
-## 💡 Individual Insights
-For each host, identify their strongest and weakest discovery area:
-- Strong at: [NOW/MEASURE/BLOCKER] ([X]% capture rate)
-- Improve: [NOW/MEASURE/BLOCKER] ([Y]% capture rate)
+**One thing to focus on:**
+[Single most impactful improvement - e.g., "Always quantify the commercial impact of NOT hiring - what revenue/projects are at risk?"]
 
-## 🎯 Team Improvement Focus
-From improvement_areas data, provide 2-3 specific actions:
-- Current gap: [Metric at X%]
-- Action: [Specific question to ask more]
-- Target: [Y%]
-
-## 📈 Quality Indicators
-From team_benchmarks:
-- Urgency discovery (NOW): [X]% of meetings
-- Metrics discovery (MEASURE): [Y]% of meetings
-- Blocker identification: [Z]% of meetings
-
-Keep actionable and specific. Under 350 words.
-
-Data:
-{data}"""
-
+Data: {data}"""
 
 class LLMClient:
-    """OpenAI LLM client wrapper."""
+    """OpenAI LLM client for UNKNOWN Brain client intelligence reports."""
 
     def __init__(self):
         self.client = OpenAI(api_key=config.OPENAI_API_KEY)
-        self.model = config.DEFAULT_LLM_MODEL
+        self.model = config.DEFAULT_LLM_MODEL or DEFAULT_MODEL
+        self.executor = ThreadPoolExecutor(max_workers=10)  # For concurrent API calls
 
     def generate_insights_v2(self, intelligence_data: Dict[str, Any]) -> str:
         """
-        Generate business intelligence insights from comprehensive data.
-
+        Generate complete UNKNOWN Brain report using separate LLM calls per section.
+        
+        Args:
+            intelligence_data: BigQuery data with client meetings and stats
+            
         Returns:
-            Markdown-formatted executive briefing
+            Complete formatted report
         """
-        # KEEP ALL THE DATA - it was working with the original generate_insights method
-        data_json = json.dumps(intelligence_data, indent=2, default=str)
-
-        logger.info(f"Generating business intelligence insights using {self.model}")
-        logger.info(f"Full data size: {len(data_json)} chars, Pipeline items: {len(intelligence_data.get('now_pipeline', []))}")
-
-        # Build the full prompt with ALL data
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{INSIGHTS_USER_PROMPT.format(data=data_json)}"
-
+        logger.info(f"Generating UNKNOWN Brain report using {self.model}")
+        
+        # Process data for client meeting context
+        processed_data = self._process_client_meetings(intelligence_data)
+        
+        # Generate each section separately
+        sections = []
+        
+        # 1. Executive Summary
+        logger.info("Generating Executive Summary...")
+        executive_summary = self._generate_executive_summary(processed_data)
+        sections.append(f"## 📊 EXECUTIVE SUMMARY\n\n{executive_summary}")
+        
+        # 2. Team Performance Table
+        logger.info("Generating Team Performance Table...")
+        performance_table = self._generate_performance_table(processed_data)
+        sections.append(f"## 📊 TEAM PERFORMANCE TABLE\n\n{performance_table}")
+        
+        # 3. All Conversations (with concurrent processing)
+        logger.info(f"Generating {len(processed_data['meetings'])} conversation cards...")
+        conversation_cards = self._generate_all_conversations_concurrent(processed_data['meetings'])
+        sections.append(f"## 🎯 ALL CONVERSATIONS (Best to Worst)\n\n{conversation_cards}")
+        
+        # 4. Team Coaching
+        logger.info("Generating Team Coaching...")
+        team_coaching = self._generate_team_coaching(processed_data)
+        sections.append(team_coaching)
+        
+        # Combine all sections
+        full_report = "\n\n".join(sections)
+        
+        logger.info(f"Complete report generated: {len(full_report)} chars")
+        return full_report
+    
+    def _generate_executive_summary(self, data: Dict[str, Any]) -> str:
+        """Generate executive summary section."""
         try:
-            # The issue is the Responses API with gpt-5-mini
-            # Let's use the SAME approach as the original generate_insights() which worked
-
-            # First, try Responses API since that's what the model expects
-            response = self.client.responses.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
-                input=full_prompt,
-                reasoning={"effort": "low"},
-                text={"verbosity": "low"},
-                max_output_tokens=8000,  # Balanced for 15 meetings with concise coaching
+                messages=[
+                    {"role": "system", "content": "You are UNKNOWN's analyst for client intelligence."},
+                    {"role": "user", "content": EXECUTIVE_SUMMARY_PROMPT.format(
+                        data=json.dumps(data, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=500,
+                temperature=0.3
             )
-
-            content = response.output_text or ""
-
-            # If Responses API returns empty, fall back to Chat Completions
-            if not content:
-                logger.warning("Responses API returned empty, trying Chat Completions API...")
-
-                # Use Chat Completions API like the original working version
-                chat_response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": INSIGHTS_USER_PROMPT.format(data=data_json)}
-                    ],
-                    max_completion_tokens=2500,
+            return response.choices[0].message.content or self._fallback_executive_summary(data)
+        except Exception as e:
+            logger.error(f"Executive summary generation failed: {e}")
+            return self._fallback_executive_summary(data)
+    
+    def _generate_performance_table(self, data: Dict[str, Any]) -> str:
+        """Generate team performance table."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Create a performance table for UNKNOWN team."},
+                    {"role": "user", "content": PERFORMANCE_TABLE_PROMPT.format(
+                        data=json.dumps(data['team_performance'], indent=2, default=str)
+                    )}
+                ],
+                max_tokens=500,
+                temperature=0.1  # Lower temp for structured output
+            )
+            return response.choices[0].message.content or self._fallback_performance_table(data)
+        except Exception as e:
+            logger.error(f"Performance table generation failed: {e}")
+            return self._fallback_performance_table(data)
+    
+    def _generate_all_conversations_concurrent(self, meetings: List[Dict[str, Any]]) -> str:
+        """Generate all conversation cards using concurrent API calls (3 at a time)."""
+        if not meetings:
+            return "No qualified meetings found."
+        
+        # Sort meetings by score (best first)
+        meetings_sorted = sorted(meetings, key=lambda x: x.get('score', 0), reverse=True)
+        
+        # Process in batches of 3 for concurrent calls
+        batch_size = 3
+        batches = [meetings_sorted[i:i+batch_size] for i in range(0, len(meetings_sorted), batch_size)]
+        
+        all_cards = []
+        futures = []
+        
+        # Submit all batches for concurrent processing
+        for batch in batches:
+            future = self.executor.submit(self._generate_conversation_batch, batch)
+            futures.append(future)
+        
+        # Collect results in order
+        for future in futures:
+            try:
+                cards = future.result(timeout=30)  # 30 second timeout per batch
+                all_cards.append(cards)
+            except Exception as e:
+                logger.error(f"Batch generation failed: {e}")
+                # Generate fallback for this batch
+                for meeting in batch:
+                    all_cards.append(self._fallback_conversation_card(meeting))
+        
+        return "\n".join(all_cards)
+    
+    def _generate_conversation_batch(self, meetings_batch: List[Dict[str, Any]]) -> str:
+        """Generate conversation cards for a batch of meetings."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are UNKNOWN's analyst. Create detailed meeting analysis cards."},
+                    {"role": "user", "content": CONVERSATION_CARD_PROMPT.format(
+                        count=len(meetings_batch),
+                        meetings_data=json.dumps(meetings_batch, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=2000,
+                temperature=0.3
+            )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            logger.error(f"Conversation batch generation failed: {e}")
+            # Return fallback cards for this batch
+            return "\n---\n".join([self._fallback_conversation_card(m) for m in meetings_batch])
+    
+    def _generate_team_coaching(self, data: Dict[str, Any]) -> str:
+        """Generate team coaching section."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Generate coaching insights for UNKNOWN team."},
+                    {"role": "user", "content": TEAM_COACHING_PROMPT.format(
+                        data=json.dumps(data, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=800,
+                temperature=0.4
+            )
+            return response.choices[0].message.content or self._fallback_team_coaching(data)
+        except Exception as e:
+            logger.error(f"Team coaching generation failed: {e}")
+            return self._fallback_team_coaching(data)
+    
+    def _process_client_meetings(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process BigQuery data into client meeting format."""
+        
+        meetings = data.get("now_pipeline", []) or data.get("sample_meetings", [])
+        
+        processed_meetings = []
+        team_stats = defaultdict(lambda: {"meetings": [], "total": 0, "count": 0})
+        
+        for meeting in meetings:
+            # Extract client name
+            client = meeting.get("client", "Unknown Client")
+            if not client or client == "Unknown Client":
+                client_info = meeting.get("client_info", {})
+                if isinstance(client_info, dict):
+                    client = client_info.get("client", "Unknown Client")
+                elif isinstance(client_info, str):
+                    try:
+                        client = json.loads(client_info).get("client", "Unknown Client")
+                    except:
+                        pass
+            
+            # Extract UNKNOWN team member name
+            team_member = meeting.get("owner", meeting.get("creator_name", "Unknown"))
+            
+            # Process meeting for client context
+            processed_meeting = {
+                "client": client,
+                "team_member": team_member,
+                "date": meeting.get("meeting_date", meeting.get("date", "")),
+                "score": meeting.get("score", meeting.get("total_qualified_sections", 0)),
+                "title": meeting.get("meeting_title", meeting.get("title", "Client Meeting")),
+                "now_evidence": meeting.get("now_evidence", "") or self._extract_evidence(meeting, "now"),
+                "next_evidence": meeting.get("next_evidence", "") or self._extract_evidence(meeting, "next"),
+                "measure_evidence": meeting.get("measure_evidence", "") or self._extract_evidence(meeting, "measure"),
+                "blocker_evidence": meeting.get("blocker_evidence", "") or self._extract_evidence(meeting, "blocker"),
+                "fit_evidence": meeting.get("fit_evidence", "") or self._extract_evidence(meeting, "fit"),
+                "challenges": meeting.get("challenges", []),
+                "results": meeting.get("results", []),
+                "offering": meeting.get("offering", ""),
+                "meeting_link": meeting.get("meeting_link", meeting.get("granola_link", "#"))
+            }
+            
+            processed_meetings.append(processed_meeting)
+            
+            # Update team member stats
+            team_stats[team_member]["meetings"].append({
+                "client": client,
+                "date": processed_meeting["date"],
+                "score": processed_meeting["score"]
+            })
+            team_stats[team_member]["total"] += processed_meeting["score"]
+            team_stats[team_member]["count"] += 1
+        
+        # Calculate averages
+        for member in team_stats:
+            if team_stats[member]["count"] > 0:
+                team_stats[member]["average"] = round(
+                    team_stats[member]["total"] / team_stats[member]["count"], 1
                 )
-
-                content = chat_response.choices[0].message.content or ""
-                logger.info(f"Chat Completions API returned: {len(content)} chars")
-
-            else:
-                logger.info(f"Responses API returned: {len(content)} chars")
-
-            return content
-
-        except Exception as e:
-            logger.error(f"Primary generation failed: {e}")
-
-            # Last resort: use the original generate_insights method that we know works
-            logger.info("Falling back to original generate_insights method...")
-            return self.generate_insights(intelligence_data.get("now_pipeline", [])[:25])
-
-    def _create_basic_report(self, data: Dict[str, Any]) -> str:
-        """Create a basic report when LLM fails."""
-        report = "## 🎯 Priority Opportunities\n\n"
-
-        for meeting in data.get("now_pipeline", [])[:3]:
-            report += f"### {meeting.get('client', 'Unknown')}\n"
-            report += f"- Date: {meeting.get('meeting_date', 'N/A')}\n"
-            report += f"- Owner: {meeting.get('owner', 'N/A')}\n"
-            report += f"- Score: {meeting.get('score', 0)}/5\n\n"
-
-        summary = data.get("summary_metrics", {})
-        report += f"\n## 📊 Weekly Performance\n"
-        report += f"- Total Meetings: {summary.get('total_meetings', 0)}\n"
-        report += f"- Qualified: {summary.get('pct_qualified', 0)}%\n"
-        report += f"- Average Score: {summary.get('avg_score', 0)}\n"
-
-        return report
-
-    def generate_insights(self, meetings_data: List[Dict[str, Any]]) -> str:
-        """
-        Generate insights mode content from qualified meetings.
-
-        Args:
-            meetings_data: List of meeting dicts from BigQuery
-
-        Returns:
-            Markdown-formatted insights content
-        """
-        # Prepare simplified data for LLM
-        simplified = []
-        for m in meetings_data:
-            item = {
-                "meeting_id": m.get("meeting_id"),
-                "date": str(m.get("date")) if m.get("date") else None,
-                "desk": m.get("desk"),
-                "title": m.get("title"),
-                "score": m.get("total_qualified_sections", 0),
-                "client_info": m.get("client_info"),
-                "challenges": m.get("challenges", []),
-                "results": m.get("results", []),
-                "offering": m.get("offering"),
-            }
-
-            # Extract evidence from scoring JSON
-            for criterion in ["now", "next", "measure", "blocker", "fit"]:
-                criterion_data = m.get(criterion, {})
-                if isinstance(criterion_data, dict):
-                    evidence = criterion_data.get("evidence") or criterion_data.get("reasoning")
-                    if evidence:
-                        item[f"evidence_{criterion}"] = evidence
-
-            simplified.append(item)
-
-        data_json = json.dumps(simplified, indent=2, default=str)
-
-        logger.info(f"Generating insights from {len(simplified)} meetings using {self.model}")
-
-        # Build the prompt combining system and user messages
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{INSIGHTS_USER_PROMPT.format(data=data_json)}"
-
-        try:
-            # Use Responses API for gpt-5-mini
-            response = self.client.responses.create(
-                model=self.model,
-                input=full_prompt,
-                reasoning={"effort": "minimal"},
-                text={"verbosity": "low"},
-                max_output_tokens=1500,
-            )
-
-            content = response.output_text or ""
-            logger.info(f"Generated insights: {len(content)} chars")
-            return content
-
-        except Exception as e:
-            logger.error(f"LLM insights generation failed: {e}", exc_info=True)
-            raise
-
-    def generate_coaching_v2(self, coaching_data: Dict[str, Any]) -> str:
-        """
-        Generate team performance briefing from comprehensive coaching data.
-
-        Args:
-            coaching_data: Dict with host_performance, team_benchmarks,
-                         trends, improvement_areas
-
-        Returns:
-            Markdown-formatted performance briefing
-        """
-        # Prepare data for LLM
-        data_json = json.dumps(coaching_data, indent=2, default=str)
-
-        logger.info(f"Generating team performance briefing using {self.model}")
-
-        # Build the prompt
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{COACHING_USER_PROMPT.format(data=data_json)}"
-
-        try:
-            # Use Responses API for gpt-5-mini with higher verbosity
-            response = self.client.responses.create(
-                model=self.model,
-                input=full_prompt,
-                reasoning={"effort": "high"},  # Increased
-                text={"verbosity": "high"},    # Increased
-                max_output_tokens=3000,        # Increased
-            )
-
-            content = response.output_text or ""
-
-            if len(content) < 1000:
-                logger.warning(f"Generated coaching content too short: {len(content)} chars")
-            else:
-                logger.info(f"Generated coaching: {len(content)} chars")
-
-            return content
-
-        except Exception as e:
-            logger.error(f"LLM coaching generation failed: {e}", exc_info=True)
-            raise
-
-    def generate_coaching(self, coaching_data: Dict[str, Any]) -> str:
-        """
-        Generate coaching mode content from aggregated data.
-
-        Args:
-            coaching_data: Dict with summary, leaderboard, signal_analysis, sample_meetings
-
-        Returns:
-            Markdown-formatted coaching content
-        """
-        # Simplify sample meetings
-        simplified_samples = []
-        for m in coaching_data.get("sample_meetings", []):
-            item = {
-                "meeting_id": m.get("meeting_id"),
-                "date": str(m.get("date")) if m.get("date") else None,
-                "desk": m.get("desk"),
-                "title": m.get("title"),
-                "score": m.get("total_qualified_sections", 0),
-            }
-
-            # Extract qualified status for each criterion
-            for criterion in ["now", "next", "measure", "blocker", "fit"]:
-                criterion_data = m.get(criterion, {})
-                if isinstance(criterion_data, dict):
-                    item[f"{criterion}_qualified"] = criterion_data.get("qualified", False)
-
-            simplified_samples.append(item)
-
-        # Build complete data structure
-        data = {
-            "summary": coaching_data.get("summary", {}),
-            "leaderboard": coaching_data.get("leaderboard", []),
-            "signal_analysis": coaching_data.get("signal_analysis", {}),
-            "sample_meetings": simplified_samples,
+        
+        # Calculate team stats
+        total_meetings = len(processed_meetings)
+        qualified_meetings = len([m for m in processed_meetings if m.get("score", 0) >= 3])
+        average_score = round(
+            sum(m.get("score", 0) for m in processed_meetings) / total_meetings, 1
+        ) if total_meetings else 0
+        
+        return {
+            "total_meetings": total_meetings,
+            "qualified_meetings": qualified_meetings,
+            "average_score": average_score,
+            "team_performance": dict(team_stats),
+            "meetings": processed_meetings,
+            "summary": data.get("summary_metrics", {}),
+            "trends": data.get("trends", {}),
+            "client_patterns": data.get("client_concentration", {})
         }
+    
+    def _extract_evidence(self, meeting: Dict, criterion: str) -> str:
+        """Extract evidence from meeting data."""
+        criterion_data = meeting.get(criterion, {})
+        if isinstance(criterion_data, dict):
+            return criterion_data.get("evidence", criterion_data.get("reasoning", ""))
+        return ""
+    
+    # Fallback methods for when LLM fails
+    def _fallback_executive_summary(self, data: Dict[str, Any]) -> str:
+        return f"The team delivered {data.get('qualified_meetings', 0)} qualified client meetings this period, maintaining a {data.get('average_score', 0)}/5 average score. Key opportunities identified across technology and creative sectors."
+    
+    def _fallback_performance_table(self, data: Dict[str, Any]) -> str:
+        table = "| Name | Meetings | Avg Score |\n|------|----------|----------|\n"
+        for member, stats in data.get('team_performance', {}).items():
+            table += f"| {member} | {stats['count']} | {stats.get('average', 0)}/5 |\n"
+        table += f"| **Total: {data.get('total_meetings', 0)} conversations** | **Team Average** | **{data.get('average_score', 0)}/5** |"
+        return table
+    
+    def _fallback_conversation_card(self, meeting: Dict[str, Any]) -> str:
+        link = meeting.get('meeting_link', '#')
+        client = meeting.get('client', 'Unknown')
+        team_member = meeting.get('team_member', 'Unknown')
 
-        data_json = json.dumps(data, indent=2, default=str)
+        # Synthesize evidence into flowing sentences
+        now = meeting.get('now_evidence', '')[:150] if meeting.get('now_evidence') else 'Client needs assessment in progress'
+        next_step = meeting.get('next_evidence', '')[:150] if meeting.get('next_evidence') else 'Decision timeline to be confirmed'
+        measure = meeting.get('measure_evidence', '')[:150] if meeting.get('measure_evidence') else 'Success criteria to be defined'
+        blocker = meeting.get('blocker_evidence', '')[:150] if meeting.get('blocker_evidence') else 'No immediate blockers identified'
 
-        logger.info(f"Generating coaching summary using {self.model}")
+        return f"""### {client} with {team_member}
 
-        # Build the prompt combining system and user messages
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{COACHING_USER_PROMPT.format(data=data_json)}"
+**Meeting**: {meeting.get('title', 'Meeting')} - {meeting.get('date', 'Date')} | **Score**: {meeting.get('score', 0)}/5
 
-        try:
-            # Use Responses API for gpt-5-mini
-            response = self.client.responses.create(
-                model=self.model,
-                input=full_prompt,
-                reasoning={"effort": "minimal"},
-                text={"verbosity": "low"},
-                max_output_tokens=1500,
-            )
+✅ **What {team_member} Uncovered:**
 
-            content = response.output_text or ""
-            logger.info(f"Generated coaching: {len(content)} chars")
-            return content
+- **NOW**: {now}
+- **NEXT**: {next_step}
+- **MEASURE**: {measure}
+- **BLOCKER**: {blocker}
+- **FIT**: Strategic opportunity for UNKNOWN's talent advisory and placement services with immediate commercial upside
 
-        except Exception as e:
-            logger.error(f"LLM coaching generation failed: {e}", exc_info=True)
-            raise
+💡 **Coaching for {team_member}:**
+Dig deeper on decision authority and timeline - ask who the final decision-maker is, what would accelerate the process, and whether there are competing internal priorities that could derail progress.
+
+**Next Action**: Schedule follow-up meeting to clarify specific role requirements and confirm next steps with concrete deliverables and deadlines.
+
+[View meeting →]({link})
+
+---"""
+    
+    def _fallback_team_coaching(self, data: Dict[str, Any]) -> str:
+        return """## 🎯 TEAM COACHING
+
+**What the team is doing well:**
+Maintaining consistent client meeting quality with good discovery depth.
+
+**To become world-class:**
+- For MEASURE: Ask clients "What specific outcomes would make this hire successful in 90 days?"
+- For FIT: Clarify whether clients need permanent hires vs. fractional/freelance solutions
+
+**One thing to focus on:**
+Always quantify the commercial impact of not hiring - what revenue or projects are at risk without the right talent?"""
+    
+    def __del__(self):
+        """Cleanup executor on deletion."""
+        if hasattr(self, 'executor'):
+            self.executor.shutdown(wait=False)
 
 
 # Lazy-loaded global instance

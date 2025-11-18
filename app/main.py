@@ -223,26 +223,22 @@ async def preview_email_v2(
             markdown_content = llm_client.generate_insights_v2(intelligence_data)
 
         else:  # coaching
-            logger.info(f"[{request_id}] Fetching v2 coaching data from BigQuery for last {days} days")
-            coaching_data = bq_client.fetch_coaching_data_v2(days=days)
+            logger.info(f"[{request_id}] Fetching insights data from BigQuery for last {days} days (coaching uses same format)")
+            intelligence_data = bq_client.fetch_insights_data_v2(days=days)
 
-            if not coaching_data.get("summary"):
+            if not intelligence_data.get("summary_metrics"):
                 return HTMLResponse(
                     content="<html><body><h1>No meeting data found in the specified period</h1></body></html>",
                     status_code=200,
                 )
 
-            # Generate content with LLM
-            logger.info(f"[{request_id}] Generating v2 coaching content with LLM")
-            markdown_content = llm_client.generate_coaching_v2(coaching_data)
+            # Generate content with LLM - coaching now uses same method as insights
+            logger.info(f"[{request_id}] Generating client meeting report with LLM")
+            markdown_content = llm_client.generate_insights_v2(intelligence_data)
 
         # Render email HTML
         logger.info(f"[{request_id}] Rendering email HTML")
-        total_meetings = None
-        if mode == "insights":
-            total_meetings = intelligence_data.get("summary_metrics", {}).get("total_meetings")
-        else:
-            total_meetings = coaching_data.get("summary", {}).get("total_meetings")
+        total_meetings = intelligence_data.get("summary_metrics", {}).get("total_meetings")
 
         html = render_email(mode, markdown_content, total_meetings, days=days)
 
@@ -305,19 +301,19 @@ async def send_email(
             total_meetings = intelligence_data.get("summary_metrics", {}).get("total_meetings")
 
         else:  # coaching
-            logger.info(f"[{request_id}] Fetching coaching data from BigQuery for last {days} days")
-            coaching_data = bq_client.fetch_coaching_data_v2(days=days)
+            logger.info(f"[{request_id}] Fetching insights data from BigQuery for last {days} days (coaching uses same format)")
+            intelligence_data = bq_client.fetch_insights_data_v2(days=days)
 
-            if not coaching_data.get("summary"):
+            if not intelligence_data.get("summary_metrics"):
                 raise HTTPException(
                     status_code=404,
                     detail=f"No meeting data found in the last {days} days",
                 )
 
-            # Generate content with LLM
-            logger.info(f"[{request_id}] Generating coaching content with LLM using v2")
-            markdown_content = llm_client.generate_coaching_v2(coaching_data)
-            total_meetings = coaching_data.get("summary", {}).get("total_meetings")
+            # Generate content with LLM - coaching now uses same method as insights
+            logger.info(f"[{request_id}] Generating client meeting report with LLM")
+            markdown_content = llm_client.generate_insights_v2(intelligence_data)
+            total_meetings = intelligence_data.get("summary_metrics", {}).get("total_meetings")
 
         # Render email HTML
         logger.info(f"[{request_id}] Rendering email HTML")

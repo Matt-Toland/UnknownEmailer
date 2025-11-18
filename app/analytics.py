@@ -57,9 +57,9 @@ class AnalyticsClient:
             -- Meeting link if available
             IFNULL(granola_link, '') as meeting_link
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND qualified = TRUE
-        ORDER BY total_qualified_sections DESC, scored_at DESC
+        ORDER BY total_qualified_sections DESC, date DESC
         LIMIT 15
         """
 
@@ -112,7 +112,7 @@ class AnalyticsClient:
                     LIMIT 1
                 )[OFFSET(0)] as latest_meeting
             FROM `{self.table_id}`
-            WHERE scored_at BETWEEN @start_date AND @end_date
+            WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
                 AND JSON_VALUE(client_info, '$.client') IS NOT NULL
             GROUP BY client
         )
@@ -164,7 +164,7 @@ class AnalyticsClient:
             COUNT(*) as count,
             AVG(total_qualified_sections) as avg_score
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND qualified = TRUE
             AND JSON_VALUE(fit, '$.qualified') = 'true'
         GROUP BY primary_service
@@ -222,7 +222,7 @@ class AnalyticsClient:
             -- Granola link for full context
             IFNULL(granola_link, '') as meeting_link
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND qualified = TRUE
             AND (
                 REGEXP_CONTAINS(JSON_VALUE(now, '$.evidence'), r'[£$][0-9]') OR
@@ -283,7 +283,7 @@ class AnalyticsClient:
             JSON_VALUE(blocker, '$.evidence') as evidence,
             COUNT(*) as frequency
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND JSON_VALUE(blocker, '$.qualified') = 'true'
         GROUP BY blocker_type, evidence
         ORDER BY frequency DESC
@@ -338,7 +338,7 @@ class AnalyticsClient:
             ), 1) as discovery_depth_score
 
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND creator_email IS NOT NULL
         GROUP BY creator_email, creator_name
         HAVING total_meetings >= 2  -- Only show hosts with multiple meetings
@@ -388,7 +388,7 @@ class AnalyticsClient:
                 COUNTIF(qualified = TRUE) as qualified,
                 AVG(total_qualified_sections) as avg_score
             FROM `{self.table_id}`
-            WHERE scored_at BETWEEN @this_week_start AND @end_date
+            WHERE TIMESTAMP(date) BETWEEN @this_week_start AND @end_date
         ),
         last_week AS (
             SELECT
@@ -396,7 +396,7 @@ class AnalyticsClient:
                 COUNTIF(qualified = TRUE) as qualified,
                 AVG(total_qualified_sections) as avg_score
             FROM `{self.table_id}`
-            WHERE scored_at BETWEEN @last_week_start AND @this_week_start
+            WHERE TIMESTAMP(date) BETWEEN @last_week_start AND @this_week_start
         )
         SELECT
             tw.meetings as this_week_meetings,
@@ -486,7 +486,7 @@ class AnalyticsClient:
             total_qualified_sections as score,
             FORMAT_DATE('%d %b', date) as date_short
         FROM `{self.table_id}`
-        WHERE scored_at BETWEEN @start_date AND @end_date
+        WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND qualified = TRUE
         ORDER BY creator_name, total_qualified_sections DESC, date DESC
         """

@@ -1,6 +1,6 @@
 <mjml>
   <mj-head>
-    <mj-title>UNKNOWN Brain — Calls & Coaching</mj-title>
+    <mj-title>UNKNOWN Brain — Weekly Team Performance</mj-title>
     <mj-attributes>
       <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" />
       <mj-text font-size="14px" color="#333333" line-height="1.6" />
@@ -28,7 +28,7 @@
           <h1>UNKNOWN Brain</h1>
         </mj-text>
         <mj-text align="center" font-size="16px" color="#666666">
-          Calls & Coaching
+          Weekly Team Performance
         </mj-text>
       </mj-column>
     </mj-section>
