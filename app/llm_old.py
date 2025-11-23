@@ -16,64 +16,18 @@ logger = logging.getLogger(__name__)
 # Use GPT-4.1 for better quality
 DEFAULT_MODEL = "gpt-4-1106-preview"  # or whatever GPT-4.1 model name is configured
 
-# SECTION 1: EXECUTIVE SUMMARY PROMPT (6-section skimmable format)
-EXECUTIVE_SUMMARY_PROMPT = """You are UNKNOWN's sales analyst. Create a skimmable, action-focused weekly summary.
+# SECTION 1: EXECUTIVE SUMMARY PROMPT
+EXECUTIVE_SUMMARY_PROMPT = """You are UNKNOWN's internal analyst. UNKNOWN is a creative talent consultancy that helps brands and agencies hire exceptional creative leaders and build flexible freelance teams.
 
-Format as 6 distinct sections. Keep each section to 3-4 bullet points MAX. Be concise and punchy.
+Analyze this week's CLIENT meetings and write ONE comprehensive paragraph (150-200 words) for the Executive Summary covering:
 
-### 1. What Happened (The Facts)
+1. Total qualified client meetings and average score
+2. Top performer and their key client achievement (e.g., "Ellie led with a high-impact session with Instacart")
+3. Key hiring trends observed across clients (flexibility on roles, freelance-to-perm, trial periods, contract structures)
+4. Notable client patterns (e.g., "clients prioritizing adaptability over rigid titles", "emphasis on cultural fit")
+5. Market signals and commercial opportunities (e.g., "broader trend toward agile hiring models", "emerging appetite for fractional executives")
 
-Just the scoreboard - no interpretation:
-- Meetings: [X] qualified client meetings
-- Quality: Average score [X.X] ([up/flat/down] vs last week)
-- Standout: [Name] – [X.X] with [Client]
-
-### 2. What Worked (Replicable Behaviours)
-
-From the highest-scoring meeting, extract 3 specific behaviors the team should copy:
-- [Action verb]: [What they did and the outcome]
-- [Action verb]: [What they did and the outcome]
-- [Action verb]: [What they did and the outcome]
-
-### 3. What We're Hearing (Market Signals)
-
-3-4 themes heard across ALL meetings (not just one):
-- [Trend/pattern clients are expressing]
-- [Trend/pattern clients are expressing]
-- [Trend/pattern clients are expressing]
-
-### 4. Where the Opportunities Are (Commercial Levers)
-
-Based on signals above, identify 2-3 near-term commercial opportunities:
-- [Opportunity type]: [Brief why this matters]
-- [Opportunity type]: [Brief why this matters]
-
-### 5. How to Sell This Week (Practical Playbook)
-
-Give the team 2-3 word-for-word plays they can use in conversations:
-
-**Play 1 – [Name it]**
-"[Quotable script they can literally use with clients]"
-
-**Play 2 – [Name it]**
-"[Quotable script they can literally use with clients]"
-
-### 6. What We Improve Next Week (The Coaching Bit)
-
-2-3 specific, actionable improvements:
-- [Specific behavior to adopt/improve]
-- [Specific behavior to adopt/improve]
-
-CRITICAL RULES:
-- YOU MUST use "### [Number]. [Section Title]" format for ALL section headers (e.g., "### 1. What Happened (The Facts)")
-- DO NOT use plain numbered lists like "1." - ALWAYS use the ### markdown header format
-- Section 1: Facts ONLY, no spin
-- Section 2: Must reference actual meeting and actual behaviors from the data
-- Section 3: Synthesize across ALL meetings, not just one
-- Section 5: Must be quotable scripts salespeople can actually say
-- Keep tight: 3-4 bullets max per section
-- Use bold for emphasis on key phrases
-- Action verbs: "Reframed", "Secured", "Positioned", "Controlled"
+Be specific. Reference actual clients. Highlight commercial opportunities.
 
 Data: {data}"""
 
@@ -84,18 +38,12 @@ Format EXACTLY as:
 | Name | Conversation | Score |
 |------|--------------|-------|
 | [Name] | [Client] — [Date] | [X]/5 |
-| | [Client 2] — [Date 2] | [X]/5 |
-| | **Average** | **[X.X]/5** |
-| [Name 2] | [Client] — [Date] | [X]/5 |
-| | **Average** | **[X.X]/5** |
-| **Total: X conversations** | **Team Average** | **[X.X]/5** |
+| | Average | [X]/5 |
+[Repeat for each UNKNOWN team member]
+| Total: X conversations | Team Average | [X]/5 |
 
-CRITICAL RULES:
-1. List ALL conversations for each team member
-2. ALWAYS include an Average row (in bold) after each team member's meetings
-3. Sort team members by highest average score first
-4. Use empty Name cell (|  |) for additional meetings and Average rows
-5. Bold the Average rows and Total row
+Include Average row after team members with multiple meetings.
+Sort by highest average score first.
 
 Data: {data}"""
 
@@ -108,38 +56,30 @@ For EACH of these {count} CLIENT meetings, create a detailed analysis card:
 
 **Meeting**: [Meeting Title] - [Date] | **Score**: [X]/5
 
-**✅ What [Team Member] did well:**
-[2-3 specific strengths from this meeting - e.g., "Reframed the timeline to create urgency", "Uncovered the real decision-maker", "Quantified the cost of inaction". Focus on concrete behaviors that can be replicated]
+✅ **What [Team Member] Uncovered:**
 
-**⚠️ What [Team Member] can do better next time:**
-[1-2 specific improvements - e.g., "Ask about budget approval process earlier", "Probe deeper on competing priorities", "Clarify who else needs to sign off". Focus on tactical coaching that applies to this specific client situation]
+- **NOW**: [Quote EXACT evidence of client's immediate hiring needs, urgency, current pain points, timeline]
+- **NEXT**: [Quote EXACT evidence of next steps in their hiring process, interview stages, decision timeline]
+- **MEASURE**: [Quote EXACT evidence of how client will measure hiring success, KPIs, what good looks like]
+- **BLOCKER**: [Quote EXACT evidence of obstacles to hiring, budget constraints, internal challenges]
+- **FIT**: [Explain how this opportunity aligns with UNKNOWN's services - exec search, freelance bench, advisory]
 
-**Next Action:**
-[Concrete deliverable with deadline and strategic intent - e.g., "Send comparative analysis of 3 candidates by Friday focusing on cultural fit markers", "Schedule follow-up Tuesday to discuss integration support needs"]
+💡 **Coaching for [Team Member]:**
+[2-3 specific coaching points: questions to ask next time, areas to probe deeper about client needs, discovery techniques]
 
-[View meeting →](meeting_link_here)
+**Next Action**: [Specific follow-up with client - e.g., "Send three senior creative director profiles by Friday", "Clarify budget range for freelance bench", "Schedule chemistry meeting with shortlisted candidates"]
+
+[View meeting →]({link})
 
 ---
 
-CRITICAL RULES:
-0. YOU MUST end EVERY conversation card with "---" separator on its own line (even the last card in the batch)
-1. Use **bold** format for coaching section headers on same line as colon (e.g., "**✅ What [Name] did well:**")
-2. DO NOT use ### headers for coaching sections - use inline **bold** format
-3. SYNTHESIZE insights - DO NOT copy/paste raw evidence or use quotes
-4. Write complete, flowing sentences with specific numbers, names, and details integrated naturally
-5. "What did well" should highlight 2-3 specific replicable behaviors from THIS meeting
-6. "What can do better" should be 1-2 tactical improvements specific to THIS client situation
-7. Next Action must include concrete deliverable + deadline + strategic purpose
-8. Focus on actionable coaching that can be applied immediately
-9. Replace "meeting_link_here" with the actual meeting_link from the meeting data
+CRITICAL: Quote client evidence VERBATIM. Focus on commercial opportunities. Be specific in coaching.
 
 Meetings to analyze:
 {meetings_data}"""
 
 # SECTION 4: TEAM COACHING PROMPT
-TEAM_COACHING_PROMPT = """Based on this week's client meetings, create the Team Coaching section.
-
-YOU MUST use **bold** format for all section headers exactly as shown below:
+TEAM_COACHING_PROMPT = """Based on this week's client meetings, create the Team Coaching section:
 
 ## 🎯 TEAM COACHING
 
@@ -154,8 +94,6 @@ YOU MUST use **bold** format for all section headers exactly as shown below:
 
 **One thing to focus on:**
 [Single most impactful improvement - e.g., "Always quantify the commercial impact of NOT hiring - what revenue/projects are at risk?"]
-
-CRITICAL: Use **bold** markdown for "What the team is doing well:", "To become world-class:", and "One thing to focus on:" headers.
 
 Data: {data}"""
 
@@ -211,49 +149,21 @@ class LLMClient:
         logger.info(f"Complete report generated: {len(full_report)} chars")
         return full_report
     
-    def _call_llm(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
-        """Universal LLM caller that handles both Chat Completions and Responses API."""
-        try:
-            # GPT-5 models use Responses API
-            if self.model.startswith("gpt-5"):
-                # Combine system and user prompts for Responses API
-                full_prompt = f"{system_prompt}\n\n{user_prompt}"
-                effort = "none" if self.model == "gpt-5.1" else "minimal"
-
-                response = self.client.responses.create(
-                    model=self.model,
-                    input=full_prompt,
-                    reasoning={"effort": effort},
-                    text={"verbosity": "medium"}
-                )
-                return response.output_text
-            else:
-                # GPT-4 and earlier use Chat Completions API
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    max_tokens=max_tokens,
-                    temperature=0.3
-                )
-                return response.choices[0].message.content
-        except Exception as e:
-            logger.error(f"LLM call failed: {e}", exc_info=True)
-            raise
-
     def _generate_executive_summary(self, data: Dict[str, Any]) -> str:
         """Generate executive summary section."""
         try:
-            content = self._call_llm(
-                system_prompt="You are UNKNOWN's sales analyst for client intelligence.",
-                user_prompt=EXECUTIVE_SUMMARY_PROMPT.format(
-                    data=json.dumps(data, indent=2, default=str)
-                ),
-                max_tokens=800  # Increased for 6-section format
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are UNKNOWN's analyst for client intelligence."},
+                    {"role": "user", "content": EXECUTIVE_SUMMARY_PROMPT.format(
+                        data=json.dumps(data, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=500,
+                temperature=0.3
             )
-            return content or self._fallback_executive_summary(data)
+            return response.choices[0].message.content or self._fallback_executive_summary(data)
         except Exception as e:
             logger.error(f"Executive summary generation failed: {e}")
             return self._fallback_executive_summary(data)
@@ -261,87 +171,91 @@ class LLMClient:
     def _generate_performance_table(self, data: Dict[str, Any]) -> str:
         """Generate team performance table."""
         try:
-            content = self._call_llm(
-                system_prompt="Create a performance table for UNKNOWN team.",
-                user_prompt=PERFORMANCE_TABLE_PROMPT.format(
-                    data=json.dumps(data['team_performance'], indent=2, default=str)
-                )
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Create a performance table for UNKNOWN team."},
+                    {"role": "user", "content": PERFORMANCE_TABLE_PROMPT.format(
+                        data=json.dumps(data['team_performance'], indent=2, default=str)
+                    )}
+                ],
+                max_tokens=500,
+                temperature=0.1  # Lower temp for structured output
             )
-            return content or self._fallback_performance_table(data)
+            return response.choices[0].message.content or self._fallback_performance_table(data)
         except Exception as e:
             logger.error(f"Performance table generation failed: {e}")
             return self._fallback_performance_table(data)
     
     def _generate_all_conversations_concurrent(self, meetings: List[Dict[str, Any]]) -> str:
-        """Generate all conversation cards sequentially (more reliable than concurrent)."""
+        """Generate all conversation cards using concurrent API calls (3 at a time)."""
         if not meetings:
             return "No qualified meetings found."
-
+        
         # Sort meetings by score (best first)
         meetings_sorted = sorted(meetings, key=lambda x: x.get('score', 0), reverse=True)
-
-        # Process in batches of 3 meetings at a time
+        
+        # Process in batches of 3 for concurrent calls
         batch_size = 3
         batches = [meetings_sorted[i:i+batch_size] for i in range(0, len(meetings_sorted), batch_size)]
-
+        
         all_cards = []
-
-        # Process each batch sequentially
+        futures = []
+        
+        # Submit all batches for concurrent processing
         for batch in batches:
+            future = self.executor.submit(self._generate_conversation_batch, batch)
+            futures.append(future)
+        
+        # Collect results in order
+        for future in futures:
             try:
-                logger.info(f"Generating batch of {len(batch)} conversation cards...")
-                cards = self._generate_conversation_batch(batch)
+                cards = future.result(timeout=30)  # 30 second timeout per batch
                 all_cards.append(cards)
             except Exception as e:
-                logger.error(f"Batch generation failed: {e}", exc_info=True)
-                # Generate fallback for THIS specific batch
-                fallback_cards = []
+                logger.error(f"Batch generation failed: {e}")
+                # Generate fallback for this batch
                 for meeting in batch:
-                    fallback_cards.append(self._fallback_conversation_card(meeting))
-                all_cards.append("\n".join(fallback_cards))
-
+                    all_cards.append(self._fallback_conversation_card(meeting))
+        
         return "\n".join(all_cards)
     
     def _generate_conversation_batch(self, meetings_batch: List[Dict[str, Any]]) -> str:
         """Generate conversation cards for a batch of meetings."""
         try:
-            # Debug: log meeting structure
-            logger.info(f"Processing batch of {len(meetings_batch)} meetings")
-            for i, m in enumerate(meetings_batch):
-                logger.info(f"Meeting {i}: client={m.get('client')}, team_member={m.get('team_member')}, has_meeting_link={'meeting_link' in m}")
-
-            content = self._call_llm(
-                system_prompt="You are UNKNOWN's analyst. Create detailed meeting analysis cards.",
-                user_prompt=CONVERSATION_CARD_PROMPT.format(
-                    count=len(meetings_batch),
-                    meetings_data=json.dumps(meetings_batch, indent=2, default=str)
-                ),
-                max_tokens=2000
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are UNKNOWN's analyst. Create detailed meeting analysis cards."},
+                    {"role": "user", "content": CONVERSATION_CARD_PROMPT.format(
+                        count=len(meetings_batch),
+                        meetings_data=json.dumps(meetings_batch, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=2000,
+                temperature=0.3
             )
-            return content or ""
+            return response.choices[0].message.content or ""
         except Exception as e:
-            logger.error(f"Conversation batch generation failed: {e}", exc_info=True)
-            logger.error(f"Failed batch had {len(meetings_batch)} meetings")
+            logger.error(f"Conversation batch generation failed: {e}")
             # Return fallback cards for this batch
-            try:
-                fallback_cards = [self._fallback_conversation_card(m) for m in meetings_batch]
-                logger.info(f"Successfully generated {len(fallback_cards)} fallback cards")
-                return "\n---\n".join(fallback_cards)
-            except Exception as fallback_error:
-                logger.error(f"Fallback card generation also failed: {fallback_error}", exc_info=True)
-                return f"<!-- Error generating cards for {len(meetings_batch)} meetings -->"
+            return "\n---\n".join([self._fallback_conversation_card(m) for m in meetings_batch])
     
     def _generate_team_coaching(self, data: Dict[str, Any]) -> str:
         """Generate team coaching section."""
         try:
-            content = self._call_llm(
-                system_prompt="Generate coaching insights for UNKNOWN team.",
-                user_prompt=TEAM_COACHING_PROMPT.format(
-                    data=json.dumps(data, indent=2, default=str)
-                ),
-                max_tokens=800
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Generate coaching insights for UNKNOWN team."},
+                    {"role": "user", "content": TEAM_COACHING_PROMPT.format(
+                        data=json.dumps(data, indent=2, default=str)
+                    )}
+                ],
+                max_tokens=800,
+                temperature=0.4
             )
-            return content or self._fallback_team_coaching(data)
+            return response.choices[0].message.content or self._fallback_team_coaching(data)
         except Exception as e:
             logger.error(f"Team coaching generation failed: {e}")
             return self._fallback_team_coaching(data)
@@ -350,12 +264,10 @@ class LLMClient:
         """Process BigQuery data into client meeting format."""
         
         meetings = data.get("now_pipeline", []) or data.get("sample_meetings", [])
-
-        logger.info(f"Preprocessing {len(meetings)} meetings from pipeline")
-
+        
         processed_meetings = []
         team_stats = defaultdict(lambda: {"meetings": [], "total": 0, "count": 0})
-
+        
         for meeting in meetings:
             # Extract client name
             client = meeting.get("client", "Unknown Client")
@@ -387,7 +299,7 @@ class LLMClient:
                 "challenges": meeting.get("challenges", []),
                 "results": meeting.get("results", []),
                 "offering": meeting.get("offering", ""),
-                "meeting_link": meeting.get("meeting_link", meeting.get("granola_link", "#"))
+                "link": meeting.get("meeting_link", meeting.get("granola_link", "#"))
             }
             
             processed_meetings.append(processed_meeting)
@@ -445,34 +357,18 @@ class LLMClient:
         return table
     
     def _fallback_conversation_card(self, meeting: Dict[str, Any]) -> str:
-        link = meeting.get('meeting_link', '#')
-        client = meeting.get('client', 'Unknown')
-        team_member = meeting.get('team_member', 'Unknown')
-
-        # Synthesize evidence into flowing sentences
-        now = meeting.get('now_evidence', '')[:150] if meeting.get('now_evidence') else 'Client needs assessment in progress'
-        next_step = meeting.get('next_evidence', '')[:150] if meeting.get('next_evidence') else 'Decision timeline to be confirmed'
-        measure = meeting.get('measure_evidence', '')[:150] if meeting.get('measure_evidence') else 'Success criteria to be defined'
-        blocker = meeting.get('blocker_evidence', '')[:150] if meeting.get('blocker_evidence') else 'No immediate blockers identified'
-
-        return f"""### {client} with {team_member}
+        return f"""### {meeting.get('client', 'Unknown')} with {meeting.get('team_member', 'Unknown')}
 
 **Meeting**: {meeting.get('title', 'Meeting')} - {meeting.get('date', 'Date')} | **Score**: {meeting.get('score', 0)}/5
 
-✅ **What {team_member} Uncovered:**
+✅ **What was uncovered:**
+- **NOW**: {meeting.get('now_evidence', 'No immediate needs captured')[:200]}
+- **NEXT**: {meeting.get('next_evidence', 'No next steps captured')[:200]}
+- **MEASURE**: {meeting.get('measure_evidence', 'No success metrics captured')[:200]}
+- **BLOCKER**: {meeting.get('blocker_evidence', 'No blockers identified')[:200]}
+- **FIT**: Opportunity aligns with UNKNOWN's talent consultancy services
 
-- **NOW**: {now}
-- **NEXT**: {next_step}
-- **MEASURE**: {measure}
-- **BLOCKER**: {blocker}
-- **FIT**: Strategic opportunity for UNKNOWN's talent advisory and placement services with immediate commercial upside
-
-💡 **Coaching for {team_member}:**
-Dig deeper on decision authority and timeline - ask who the final decision-maker is, what would accelerate the process, and whether there are competing internal priorities that could derail progress.
-
-**Next Action**: Schedule follow-up meeting to clarify specific role requirements and confirm next steps with concrete deliverables and deadlines.
-
-[View meeting →]({link})
+**Next Action**: Follow up with client on specific hiring requirements.
 
 ---"""
     

@@ -26,7 +26,8 @@ class AnalyticsClient:
         Since all meetings have NOW=true in this dataset, we focus on highest scores.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
@@ -60,7 +61,7 @@ class AnalyticsClient:
         WHERE TIMESTAMP(date) BETWEEN @start_date AND @end_date
             AND qualified = TRUE
         ORDER BY total_qualified_sections DESC, date DESC
-        LIMIT 15
+        LIMIT 30
         """
 
         job_config = bigquery.QueryJobConfig(
@@ -91,7 +92,8 @@ class AnalyticsClient:
         Returns top clients, new vs returning ratio, and engagement depth.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         WITH client_stats AS (
@@ -156,7 +158,8 @@ class AnalyticsClient:
         Returns distribution of opportunities by service type.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
@@ -207,7 +210,8 @@ class AnalyticsClient:
         Returns meetings with commercial numbers for deal tracking.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
@@ -233,7 +237,7 @@ class AnalyticsClient:
                 REGEXP_CONTAINS(JSON_VALUE(blocker, '$.evidence'), r'\d+[kK]')
             )
         ORDER BY scored_at DESC
-        LIMIT 15
+        LIMIT 30
         """
 
         job_config = bigquery.QueryJobConfig(
@@ -275,7 +279,8 @@ class AnalyticsClient:
         Returns top blockers with evidence and frequency.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
@@ -313,7 +318,8 @@ class AnalyticsClient:
         Returns per-host metrics including quality indicators.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
@@ -378,8 +384,9 @@ class AnalyticsClient:
         Returns comparison of this week vs last week.
         """
         end_date = datetime.now(self.tz)
-        this_week_start = end_date - timedelta(days=7)
-        last_week_start = end_date - timedelta(days=14)
+        # Set week boundaries to beginning of day
+        this_week_start = (end_date - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+        last_week_start = (end_date - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         WITH this_week AS (
@@ -477,7 +484,8 @@ class AnalyticsClient:
         Returns meetings for each person with their scores and averages.
         """
         end_date = datetime.now(self.tz)
-        start_date = end_date - timedelta(days=days)
+        # Set start_date to beginning of day to capture all meetings from that date
+        start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = f"""
         SELECT
